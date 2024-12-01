@@ -19,12 +19,20 @@ main :: proc() {
   for i := 0; i<len(data); i += 1 {
     end = i
     if data[i] == 10 {
-      sort_append(&right, data[start:end])
+      val_as_int, parse_ok := strconv.parse_int(string(data[start:end]))
+      if !parse_ok {
+        fmt.panicf("Failed to parse int from string:\"%s\"", string(data[start:end]))
+      }
+      append_elem(&right, val_as_int)
 
       start = i + 1
 
     } else if data[i] == 32 {
-      sort_append(&left, data[start:end])
+      val_as_int, parse_ok := strconv.parse_int(string(data[start:end]))
+      if !parse_ok {
+        fmt.panicf("Failed to parse int from string:\"%s\"", string(data[start:end]))
+      }
+      append_elem(&left, val_as_int)
 
       for data[i] == 32 {
         i += 1
@@ -34,22 +42,12 @@ main :: proc() {
   }
 
   sum := 0
-  for v, i in left {
-    sum += math.abs(v - right[i])
+  for key in left {
+    count := 0
+    for elem in right {
+      if elem == key do count += 1
+    }
+    sum += key*count
   }
   fmt.println(sum)
-}
-
-sort_append :: proc(xs: ^[dynamic]int, val: []byte) {
-  val_as_int, parse_ok := strconv.parse_int(string(val))
-  if !parse_ok {
-    fmt.panicf("Failed to parse int from string:\"%s\"", string(val))
-  }
-
-  i := 0
-  for i < len(xs) && val_as_int > xs[i] {
-    i += 1
-  }
-
-  inject_at_elem(xs, i, val_as_int)
 }
