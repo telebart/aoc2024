@@ -5,7 +5,7 @@ import "core:bufio"
 import "core:fmt"
 import "core:strings"
 import "core:strconv"
-import "core:io"
+import "core:slice"
 
 main :: proc() {
   f, ferr := os.open("2/input")
@@ -20,84 +20,63 @@ main :: proc() {
   defer bufio.reader_destroy(&reader)
 
   count_success := 0
-  prev := strings.builder_make()
-  defer strings.builder_destroy(&prev)
-  next := strings.builder_make()
-  defer strings.builder_destroy(&next)
-  first := true
-  plus: Maybe(bool)
-  out: for {
-    r, _, err  := bufio.reader_read_rune(&reader)
+  for {
+    line, err := bufio.reader_read_string(&reader, '\n')
     if err != nil {
-      if err != .EOF do fmt.panicf("error: %v", err)
       break
     }
+    defer delete(line)
+    line = strings.trim_right(line, "\n")
 
-    switch r {
-    case ' ':
-      if first {
-        first = !first
-        continue
-      }
-
-      if !is_safe(prev.buf[:], next.buf[:], &plus) {
-        plus = nil
-        strings.builder_reset(&prev)
-        strings.builder_reset(&next)
-        first = true
-
-        for {
-          r2, _, err  := bufio.reader_read_rune(&reader)
-          if err != nil {
-            if err == .EOF do break out
-            fmt.panicf("error: %v", err)
-          }
-
-          if r2 == '\n' {
-            break
-          }
-        }
-      } else {
-        strings.builder_reset(&prev)
-        strings.write_bytes(&prev, next.buf[:])
-        strings.builder_reset(&next)
-      }
-
-    case '\n':
-      if is_safe(prev.buf[:], next.buf[:], &plus) {
-        count_success += 1
-      }
-
-      first = true
-      plus = nil
-      strings.builder_reset(&prev)
-      strings.builder_reset(&next)
-    case:
-      if first {
-        strings.write_rune(&prev, r)
-      } else {
-        strings.write_rune(&next, r)
-      }
-    }
+    split := strings.split(line, " ")
+    if is_safe(split) do count_success += 1
   }
 
   fmt.println(count_success)
 }
 
-is_safe :: proc(prev, next: []u8, plus: ^Maybe(bool)) -> bool {
-  fst := strconv.atoi(string(prev))
-  snd := strconv.atoi(string(next))
+is_safe :: proc(original: []string) -> bool {
+    compare := slice.clone_to_dynamic(original[:])
+    defer delete_dynamic_array(compare)
 
-  diff := fst - snd
-  if abs(diff) > 3 || diff == 0 do return false
+    fail_index := check_safe(compare[:])
+    if fail_index == -1 do return true
 
-  plus_val, ok := plus.?
-  if !ok {
-    plus^ = diff > 0
-    return true
+    compare = slice.clone_to_dynamic(original[:])
+    ordered_remove(&compare, fail_index)
+    success := check_safe(compare[:])
+    if success == -1 do return true
+
+    compare = slice.clone_to_dynamic(original[:])
+    ordered_remove(&compare, fail_index+1)
+    success = check_safe(compare[:])
+    if success == -1 do return true
+
+    if fail_index - 1 == 0 {
+      compare = slice.clone_to_dynamic(original[:])
+      ordered_remove(&compare, 0)
+      success = check_safe(compare[:])
+      if success == -1 do return true
+    }
+
+    fmt.println("failed", original, fail_index)
+    return false
+}
+
+check_safe :: proc(compare: []string) -> int {
+  plus: bool
+  for i in 0..<len(compare)-1 {
+    fst := strconv.atoi(compare[i])
+    snd := strconv.atoi(compare[i+1])
+    diff := fst - snd
+
+    if i == 0 {
+      plus = diff > 0
+    }
+
+    if abs(diff) > 3|| diff == 0 || (diff > 0) != plus {
+      return i
+    }
   }
-
-  if (diff > 0) != plus_val do return false
-
-  return true
+  return -1
 }
