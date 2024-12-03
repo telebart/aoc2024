@@ -33,6 +33,8 @@ main :: proc() {
   fmt.println(sum)
 }
 
+dodont := true
+
 parse_instruction :: proc(reader: ^bufio.Reader, expected: rune) -> (Maybe(int), io.Error) {
   r, _, err := bufio.reader_read_rune(reader)
   if err != nil {
@@ -42,7 +44,23 @@ parse_instruction :: proc(reader: ^bufio.Reader, expected: rune) -> (Maybe(int),
     return nil, err
   }
 
+  for !dodont {
+    do_val, err := parse_do_dont(reader, {'d'})
+    if err == .EOF do return nil, nil
+    if do_bool, ok := do_val.?; ok {
+      dodont = do_bool
+      return parse_instruction(reader, 'm')
+    }
+  }
+
   if r != expected {
+    if r == 'd' {
+      do_val, err := parse_do_dont(reader, {'o'})
+      if err == .EOF do return nil, nil
+        if do_bool, ok := do_val.?; ok {
+          dodont = do_bool
+        }
+    }
     return parse_instruction(reader, 'm')
   }
 
@@ -69,7 +87,7 @@ parse_instruction :: proc(reader: ^bufio.Reader, expected: rune) -> (Maybe(int),
         left_num := strconv.atoi(string(left.buf[:]))
         right_num := strconv.atoi(string(right.buf[:]))
         mult := left_num*right_num
-        fmt.println("returning mult", mult, left_num, right_num)
+        if left_num == 990 do fmt.println("returning mult", mult, left_num, right_num)
         return mult, nil
       case bool:
         return parse_instruction(reader, 'm')
@@ -97,6 +115,37 @@ parse_instruction :: proc(reader: ^bufio.Reader, expected: rune) -> (Maybe(int),
   return nil, .EOF
 }
 
+parse_do_dont :: proc(reader: ^bufio.Reader, runes: []rune, do_bool: bool = true) -> (Maybe(bool), io.Error) {
+  r, _, err := bufio.reader_read_rune(reader)
+  if err != nil {
+    return nil, err
+  }
+
+  for expected in runes {
+    if r != expected {
+      continue
+    }
+    switch expected {
+    case 'd':
+      return parse_do_dont(reader, {'o'})
+    case 'o':
+      return parse_do_dont(reader, {'n', '('}, true)
+    case '(':
+      return parse_do_dont(reader, {')'}, do_bool)
+    case 'n':
+      return parse_do_dont(reader, {'\''})
+    case '\'':
+      return parse_do_dont(reader, {'t'})
+    case 't':
+      return parse_do_dont(reader, {'('}, false)
+    case ')':
+      return do_bool, nil
+    }
+  }
+
+  return nil, nil
+}
+
 parse_number_error :: union {
   io.Error,
   bool,
@@ -111,9 +160,17 @@ parse_number :: proc(reader: ^bufio.Reader, curr: ^strings.Builder, left: bool) 
   switch r {
   case ',':
     if left do return nil
+
+    err := bufio.reader_unread_rune(reader)
+    if err != nil do return err
+
     return true
   case ')':
     if !left do return nil
+
+    err := bufio.reader_unread_rune(reader)
+    if err != nil do return err
+
     return true
   case '0'..='9':
     _, err := strings.write_rune(curr, r)
@@ -122,6 +179,10 @@ parse_number :: proc(reader: ^bufio.Reader, curr: ^strings.Builder, left: bool) 
     }
     return parse_number(reader, curr, left)
   case:
+
+    err := bufio.reader_unread_rune(reader)
+    if err != nil do return err
+
     return true
   }
 }
