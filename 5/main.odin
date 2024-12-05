@@ -37,11 +37,23 @@ is_valid_line :: proc(line: string, rules_map: map[string][dynamic]string) -> Ma
   updates := strings.split(line, ",")
   defer delete(updates)
 
-  for update, i in updates { for seen in updates[:i] {
-    if slice.contains(rules_map[update][:], seen) do return nil
-  }}
+  indices, ok := is_invalid_line(updates, rules_map).?
+  if !ok do return nil
+
+  for {
+    updates[indices.x], updates[indices.y] = updates[indices.y], updates[indices.x]
+    indices, ok = is_invalid_line(updates, rules_map).?
+    if !ok do break
+  }
 
   val := strconv.atoi(updates[len(updates)/2])
-  fmt.println("valid", val)
+  fmt.println("corrected line", val)
   return val
+}
+
+is_invalid_line :: proc(updates: []string, rules_map: map[string][dynamic]string) -> Maybe([2]int){
+  for update, i in updates { for seen,j in updates[:i] {
+    if slice.contains(rules_map[update][:], seen) do return [2]int{i, j}
+  }}
+  return nil
 }
