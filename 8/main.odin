@@ -14,6 +14,7 @@ main :: proc() {
   antennas: map[byte][dynamic][2]int
   x, y := 0, 0
   helper: [dynamic]byte
+  count := 0
   for b in data {
     if b == '\n' {
       append_elem(&data_matrix, slice.clone_to_dynamic(helper[:])[:])
@@ -22,29 +23,41 @@ main :: proc() {
       x = 0
       continue
     }
-    append_elem(&helper, b)
     if b != '.' {
       temp := [2]int{x,y}
+      append_elem(&helper, '#')
+      count += 1
       if antennas[b] == nil {
         antennas[b] = [dynamic][2]int{temp}
       } else {
         append_elem(&antennas[b], [2]int{x,y})
       }
+    } else {
+      append_elem(&helper, b)
     }
     x += 1
   }
 
-  count := 0
   for key, arr in antennas { for i in 0..<len(arr)-1 {
     window := arr[i:]
     for j in 1..<len(window) {
       dist_vec := window[0]-window[j]
-      antitode_candidates := [2][2]int{window[0] + dist_vec, window[j] - dist_vec}
-      for candidate in antitode_candidates {
-        if candidate.y < 0 || candidate.y >= len(data_matrix) do continue
-        if candidate.x < 0 || candidate.x >= len(data_matrix[0]) do continue
-        if data_matrix[candidate.y][candidate.x] == '#' do continue
-        data_matrix[candidate.y][candidate.x] = '#'
+      next := window[0]
+      for {
+        next += dist_vec
+        if next.y < 0 || next.y >= len(data_matrix) do break
+        if next.x < 0 || next.x >= len(data_matrix[0]) do break
+        if data_matrix[next.y][next.x] == '#' do continue
+        data_matrix[next.y][next.x] = '#'
+        count += 1
+      }
+      next = window[j]
+      for {
+        next -= dist_vec
+        if next.y < 0 || next.y >= len(data_matrix) do break
+        if next.x < 0 || next.x >= len(data_matrix[0]) do break
+        if data_matrix[next.y][next.x] == '#' do continue
+        data_matrix[next.y][next.x] = '#'
         count += 1
       }
     }
