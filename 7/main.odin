@@ -38,12 +38,18 @@ calibrate :: proc(total, target: int, xs: []int) -> bool {
     return false
   }
   new_total := 0
+  temp := strings.builder_make()
+  defer strings.builder_destroy(&temp)
   for o in operators {
     switch o {
       case .Multi:
         new_total = total*xs[0]
       case .Add:
         new_total = total+xs[0]
+      case .Concat:
+        str := fmt.sbprintf(&temp, "%d%d", total, xs[0])
+        defer strings.builder_reset(&temp)
+        new_total = strconv.atoi(str)
     }
     if ok := calibrate(new_total, target, xs[1:]); ok {
       return ok
@@ -55,9 +61,11 @@ calibrate :: proc(total, target: int, xs: []int) -> bool {
 Operator :: enum{
   Multi,
   Add,
+  Concat,
 }
 
 operators := [?]Operator{
   .Multi,
   .Add,
+  .Concat,
 }
