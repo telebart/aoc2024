@@ -7,6 +7,15 @@ import "core:strconv"
 import "core:slice"
 import "core:bufio"
 
+Block :: struct {
+  length: int,
+  type: type,
+}
+
+type :: union {
+  int,
+}
+
 main :: proc() {
   f, ferr := os.open("9/input")
   if ferr != 0 {
@@ -19,50 +28,86 @@ main :: proc() {
   bufio.reader_init_with_buf(&reader, os.stream_from_handle(f), buffer[:])
   defer bufio.reader_destroy(&reader)
 
-  data: [dynamic]Maybe(int)
+  data: [dynamic]Block
   i := 0
   for {
     b, rerr := bufio.reader_read_byte(&reader)
     if rerr != nil {
       if rerr == .EOF do break
-      fmt.panicf("reader read byte: %e", rerr)
+        fmt.panicf("reader read byte: %e", rerr)
     }
     if b == '\n' do break
 
-    for _ in 0..<(int(b) - 48) {
+      length := (int(b) - 48)
       if i & 1 == 1 {
-        append(&data, nil)
+        append(&data, Block{length, nil})
       } else {
-        append(&data, i/2)
+        append(&data, Block{length, i/2})
       }
-    }
-    i += 1
-    }
 
-    for x in data {
-      if x == nil do fmt.print('.')
-      else do fmt.print(x)
-    }
-    j := 0
-    k := len(data)-1
-    total := 0
-    for {
-      for data[j] != nil {
-        total += j * data[j].?
-        j += 1
+      i += 1
+  }
+
+  k := len(data)
+  for {
+    new_k, files_ok := search_files(data[:k]).?
+    if !files_ok do break
+      k = new_k
+
+      length_file := data[new_k].length
+      j, free_ok := search_free(data[:], length_file, k).?
+      if !free_ok do continue
+      length_free := data[j].length
+      if j > k do continue
+      diff := length_free - length_file
+      if diff > 0 {
+        data[j] = Block{ length_file, nil }
+        new_data := make([dynamic]Block, 0, len(data)+1)
+        for x in data[:j+1] {
+          append(&new_data, x)
+        }
+        if diff == 0 do panic("what")
+        append(&new_data, Block{diff, nil})
+        for x in data[j+1:] {
+          append(&new_data, x)
+        }
+        k += 1
+        delete_dynamic_array(data)
+        data = new_data
       }
-      for data[k] == nil {
-        k -= 1
-      }
-      if j>k do break
       data[j], data[k] = data[k], data[j]
-    }
-    fmt.println()
-    for x in data {
-      if x == nil do fmt.print('.')
-      else do fmt.print(x)
-    }
+  }
 
-    fmt.println()
-    fmt.println(total)
+  total := 0
+  total_i := 0
+  for block in data {
+    if block.type == nil do total_i += block.length
+    else {
+      for _ in 0..<block.length {
+        total += total_i * block.type.(int)
+        total_i += 1
+      }
+    }
+  }
+
+  fmt.println(total)
+}
+
+search_free :: proc(arr: []Block, length, max_index: int) -> Maybe(int) {
+  for x, i in arr {
+    if i >= max_index do return nil
+      if x.type == nil && x.length >= length {
+        return i
+      }
+    }
+    return nil
+}
+
+search_files :: proc(arr: []Block) -> Maybe(int) {
+  #reverse for x, i in arr {
+    if x.type != nil {
+      return i
+    }
+  }
+  return nil
 }
