@@ -21,26 +21,23 @@ main :: proc() {
   total := 0
   for b, i in data{
     if data[i] == '0' {
-      find_trailheads(data, i, &trailheads)
+      find_trailheads(data, i, &total)
       total += len(trailheads)
-      clear_dynamic_array(&trailheads)
     }
   }
   fmt.println(total)
 }
 
-find_trailheads :: proc(mountain: []byte, cur_pos: int, trailheads: ^[dynamic]int) {
+find_trailheads :: proc(mountain: []byte, cur_pos: int, total: ^int) {
   next := mountain[cur_pos] + 1
   for dir in direction {
     move := directions[dir] + cur_pos
     if move < 0 || move >= len(mountain) || mountain[move] == '\n' do continue
     if mountain[move] != next do continue
     if next == '9'{
-      if !slice.contains(trailheads[:], move) {
-        append(trailheads, move)
-      }
+      total^ += 1
     } else {
-      find_trailheads(mountain, move, trailheads)
+      find_trailheads(mountain, move, total)
     }
   }
 }
