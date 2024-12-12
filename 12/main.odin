@@ -19,34 +19,67 @@ main :: proc() {
   }
 
   total := 0
+  sides: map[[2]int]bool
   for d, i in data {
     if d == '\n' do continue
 
     switch d {
     case 'A'..='Z':
-      gg: [2]int
+      gg := GG{0, sides}
       calculate_garden_group(&data, i, d, &gg)
-      total += gg.x * gg.y
+      sides := calculate_sides(&gg.sides)
+      total += gg.area * sides
     }
   }
 
   fmt.println(total)
 }
 
-calculate_garden_group :: proc(data: ^[]byte, loc: int, region: byte, gg: ^[2]int) {
-  data[loc] = region + VISITED_OFFSET
-  gg.x += 1
+GG :: struct {
+  area: int,
+  sides: map[[2]int]bool,
+}
 
-  for dir in dirs {
+calculate_sides :: proc(sides: ^map[[2]int]bool) -> int {
+  total := 0
+  for key in sides {
+    total += 1
+
+    left := dirs[(key.y + 3) % 4]
+    next_key := [2]int{key.x + left, key.y}
+    for {
+      dir2 := sides[next_key] or_break
+      delete_key(sides, next_key)
+      next_key.x += left
+    }
+
+    right := dirs[(key.y + 1) % 4]
+    next_key = {key.x + right, key.y}
+    for {
+      dir2 := sides[next_key] or_break
+      delete_key(sides, next_key)
+      next_key.x += right
+    }
+
+    delete_key(sides, key)
+  }
+  return total
+}
+
+calculate_garden_group :: proc(data: ^[]byte, loc: int, region: byte, garden_group: ^GG) {
+  data[loc] = region + VISITED_OFFSET
+  garden_group.area += 1
+
+  for dir, i in dirs {
     cell := loc + dir
     if cell < 0 || cell >= len(data) || data[cell] == '\n' {
-      gg.y += 1
+      garden_group.sides[{cell, i}] = true
     } else if data[cell] == region + VISITED_OFFSET {
       continue
     } else if data[cell] == region {
-      calculate_garden_group(data, cell, region, gg)
+      calculate_garden_group(data, cell, region, garden_group)
     } else {
-      gg.y += 1
+      garden_group.sides[{cell, i}] = true
     }
   }
 }
