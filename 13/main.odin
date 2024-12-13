@@ -22,12 +22,13 @@ main :: proc() {
     a := split_xy(lines[0], button_sep)
     b := split_xy(lines[1], button_sep)
     prize := split_xy(lines[2], prize_sep)
+    prize += 1e13
 
-    left := matrix[2,2]f32{
+    left := matrix[2,2]f64{
       a.x, a.y,
       b.x, b.y,
     }
-    ileft := matrix[2,2]f32{
+    ileft := matrix[2,2]f64{
       b.y, -b.x,
       -a.y, a.x,
     }
@@ -43,9 +44,9 @@ main :: proc() {
   fmt.println(total)
 }
 
-split_xy :: proc(line: string, sep: []string) -> [2]f32 {
+split_xy :: proc(line: string, sep: []string) -> [2]f64 {
   split := strings.split_multi(line, sep)
-  x := strconv.parse_f32(split[1]) or_else panic("parse int")
-  y := strconv.parse_f32(split[3]) or_else panic("parse int")
+  x := strconv.parse_f64(split[1]) or_else panic("parse int")
+  y := strconv.parse_f64(split[3]) or_else panic("parse int")
   return {x, y}
 }
