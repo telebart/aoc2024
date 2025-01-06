@@ -12,7 +12,7 @@ import "core:time"
 KILOBYTES :: 1024
 WIDTH :: 71
 UNVISITED :: max(int)
-WALL :: -1
+CORRUPTED_MEMORY :: -1
 
 memory := [WIDTH][WIDTH]int{
   0..<WIDTH = UNVISITED
@@ -22,7 +22,6 @@ goal := [2]int{
   WIDTH-1,
 }
 
-min_steps := max(int)
 dirs := [4][2]int{
   {1,0},
   {0,1},
@@ -34,29 +33,48 @@ main :: proc() {
   data := os.read_entire_file_from_filename("18/input") or_else panic("no input")
   data_lines := strings.split_lines(string(data[:len(data)-1]))
 
+  memory[0][0] = 0
   for corrupted_memory in 0..<KILOBYTES {
     split := strings.split(data_lines[corrupted_memory], ",")
     x := strconv.atoi(split[0])
     y := strconv.atoi(split[1])
-    memory[y][x] = WALL
+    memory[y][x] = CORRUPTED_MEMORY
   }
 
-  walk([2]int{0,0}, 0, 0)
-  walk([2]int{0,0}, 1, 0)
+  i := KILOBYTES
+  for {
+    split := strings.split(data_lines[i], ",")
+    x := strconv.atoi(split[0])
+    y := strconv.atoi(split[1])
+    last_corrupted_memory := [2]int{x,y}
+    memory[y][x] = CORRUPTED_MEMORY
+    memory_at_start := memory
 
+    walk([2]int{0,0}, 0, 0)
+    walk([2]int{0,0}, 1, 0)
+    if !goal_found {
+      fmt.println(last_corrupted_memory)
+      break
+    }
+    memory = memory_at_start
 
-  fmt.println(min_steps)
+    goal_found = false
+    i += 1
+  }
 }
 
+goal_found := false
+
 walk :: proc(cur: [2]int, dir, steps: int) {
+  if goal_found do return
   next := cur + dirs[dir]
   steps := steps + 1
 
   if next.x < 0 || next.x == WIDTH do return
   if next.y < 0 || next.y == WIDTH do return
-  if memory[next.y][next.x] == -1 do return
+  if memory[next.y][next.x] == CORRUPTED_MEMORY do return
   if next == goal {
-    min_steps = min(min_steps, steps)
+    goal_found = true
     return
   }
 
