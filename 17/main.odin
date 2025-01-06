@@ -27,11 +27,7 @@ main :: proc() {
   data := os.read_entire_file_from_filename("17/input") or_else panic("no input")
   data_lines := strings.split_lines(string(data))
 
-  reg := Registers{
-    A = get_register(data_lines[0]),
-    B = get_register(data_lines[1]),
-    C = get_register(data_lines[2]),
-  }
+  a := get_register(data_lines[0])
 
   program_split := strings.split(data_lines[4], " ")
   program: [dynamic]int
@@ -39,8 +35,31 @@ main :: proc() {
     append(&program, strconv.atoi(num))
   }
 
-  instruction_pointer: int
+  fmt.println(program)
   out: [dynamic]int
+  power := 0
+  for {
+    clear(&out)
+    run_program(power, program[:], &out)
+    if slice.equal(program[:], out[:]) {
+      break
+    }
+
+    if slice.equal(program[len(program)-len(out):], out[:]) {
+      power *= 8
+    } else {
+      power += 1
+    }
+  }
+  fmt.println(out, power)
+}
+
+run_program :: proc(a: int, program: []int, out: ^[dynamic]int) {
+  reg := Registers{
+    A = a,
+  }
+
+  instruction_pointer: int
   for {
     move := 2
     literal_operand := program[instruction_pointer + 1]
@@ -48,7 +67,7 @@ main :: proc() {
     if combo_operand == 4 { combo_operand = reg.A
     } else if combo_operand == 5 { combo_operand = reg.B
     } else if combo_operand == 6 { combo_operand = reg.C
-    } else if combo_operand == 7 { panic("invalid program") }
+    } else if combo_operand == 7 do panic("invalid program")
 
     switch Ops(program[instruction_pointer]) {
     case .adv:
@@ -65,19 +84,17 @@ main :: proc() {
     case .bxc:
       reg.B ~= reg.C
     case .out:
-      append(&out, combo_operand%8)
+      append(out, combo_operand%8)
     case .bdv:
       reg.B = reg.A / int(math.pow2_f64(combo_operand))
     case .cdv:
       reg.C = reg.A / int(math.pow2_f64(combo_operand))
     }
 
-
     instruction_pointer += move
     if instruction_pointer >= len(program) do break
   }
 
-  fmt.println(out)
 }
 
 get_register :: proc(line: string) -> int {
