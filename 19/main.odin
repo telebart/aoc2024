@@ -20,22 +20,34 @@ main :: proc() {
     patterns[p] = void{}
   }
 
-  possibles := 0
   designs := strings.split_lines(instructions[1])
-  for design in designs {
-    if complete_design(design) do possibles += 1
+  total: int
+  for design, i in designs {
+    total += complete_design(design)
   }
 
-  fmt.println(possibles)
+  fmt.println(total)
 }
 
-complete_design :: proc(design: string, end: int = 0) -> bool {
-  if end > len(design) do return false
+memo: map[memo_item]int
+memo_item :: struct {
+  d: string,
+  e: int,
+}
+
+complete_design :: proc(design: string, end: int = 0) -> int {
+  if val, ok := memo[{design, end}]; ok { return val }
+  if end > len(design) do return 0
   if _, ok := patterns[design[:end]]; ok || end == 0 {
-    if len(design) == end do return true
-    for i in 0..<max(len(design), max_pattern_len) {
-       if complete_design(design[end:], i+1) do return true
+    if len(design) == end {
+      return 1
     }
+    sum := 0
+    for i in 0..<max(len(design), max_pattern_len) {
+      sum += complete_design(design[end:], i+1)
+    }
+    memo[{design, end}] = sum
+    return sum
   }
-  return false
+  return 0
 }
